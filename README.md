@@ -17,7 +17,7 @@
 
 We support 10 graph benchmark datasets, whose overall statistics are as follows:
 
-| Full name | Command name |\# of graphs | Avg. \# of nodes | Avg. \# of nodes |
+| Full name | Command name |\# of graphs | Avg. \# of nodes | Avg. \# of edges |
 |------|---|---|---|---|
 | DD | dd |1,178 | 284.32 | 715.66 |
 | Protein| protein | 1,113 | 39.06 | 72.82 |
