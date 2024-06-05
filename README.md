@@ -50,3 +50,6 @@ We support 10 graph benchmark datasets, whose overall statistics are as follows:
   ```
   python3 main.py -data dd -anom_type 0 -lr 0.001 -dim 256 -n_layers 4 -device cuda:0 
   ```
+
+## Hyperparameter configurations
+- We provide the MUSE's best validation-split-based hyperparameter configuration of each dataset in ``MUSE_hyperparameters.pickle``.
