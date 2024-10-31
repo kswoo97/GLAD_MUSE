@@ -1,6 +1,6 @@
 # Official code implementation of MUSE.
 
-## To be modified soon! 
+## [Notification] Modified code will be uploaded soon!
 
 ## Paper information
 - Title: You May Better Reconstruct Anomalous over Normal Graphs: Analysis and a Simple Method for Reconstruction-based Graph-Level Anomaly Detection
