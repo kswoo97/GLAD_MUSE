@@ -1,18 +1,19 @@
 # Official code implementation of MUSE.
 
-## [Notification] Modified code will be uploaded soon!
-
 ## Paper information
-- Title: You May Better Reconstruct Anomalous over Normal Graphs: Analysis and a Simple Method for Reconstruction-based Graph-Level Anomaly Detection
-- Status: Submitted to NeurIPS 2024
-- Summary: We detect graph-level anomalies with error distributions.
+- ***Title***: Rethinking Reconstruction-based Graph-Level Anomaly Detection: Limitations and a Simple Remedy
+- ***Venue***: Accepted to **NeurIPS 2024**
+- ***Authors***: Sunwoo Kim, Soo Yong Lee, Fanchen Bu, Shinhwan Kang, Kyungho Lee, Jaemin Yoo, and Kijung Shin
+- ***Affiliation***: KAIST AI and KAIST EE
+- ***Paper link***: https://arxiv.org/abs/2410.20366
+
 
 ## TL;DR
 
 - We provide the code implementation of the proposed graph-level anomaly detection method, **MUSE**.
 - One can reproduce the MUSE's results of the main anomaly detection experiment with the below command
   ```
-  python3 main.py -data dd -anom_type 0 -lr 0.001 -dim 256 -n_layers 4 -device cuda:0 
+  python3 main.py -data dd -anom_type 0 -lr 0.001 -dim 256 -n_layers 4 -gamma 2.0 -device cuda:0 
   ```
 
 ## Datasets
@@ -46,11 +47,13 @@ We support 10 graph benchmark datasets, whose overall statistics are as follows:
     - (E.g., if setting the hidden dimension as $256$, one can give ``-dim 256``)
   - **-n_layers** [Integer]: Set the number of GNN layers of MUSE.
     - (E.g., if setting the number of layers as $5$, one can give ``-n_layers 4``)
+  - **-gamma** [Float]: Set the gamma weight regarding the 1-entry of the adjacency matrix.
+    - (E.g., if setting the wegith as $1.0$, one can give ``-gamma 1.0``)
   - **-device** [String]: Set the GPU (or CPU) device.
     - (E.g., if using the 0-th GPU, one can give ``-device cuda:0``)
 - Example ``main.py`` of the above example settings are
   ```
-  python3 main.py -data dd -anom_type 0 -lr 0.001 -dim 256 -n_layers 4 -device cuda:0 
+  python3 main.py -data dd -anom_type 0 -lr 0.001 -dim 256 -n_layers 4 -gamma 1.0 -device cuda:0 
   ```
 
 ## Hyperparameter configurations
