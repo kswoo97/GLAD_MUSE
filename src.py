@@ -4,12 +4,12 @@ import torch
 import copy
 import numpy as np
 import networkx as nx
+import torch_geometric
 
 from torch_geometric.data import Data
 from torch_geometric.utils import dropout_edge
 from torch.utils.data import Sampler
 from torch_geometric.utils import to_networkx, to_dense_adj
-from torch_geometric.transforms.gdc import GDC
 from torch_geometric.loader import DataLoader
 import torch.nn as nn
 
@@ -17,11 +17,6 @@ import torch.nn.functional as F
 
 from sklearn.metrics import average_precision_score as ap_score
 from sklearn.metrics import roc_auc_score as auroc
-from scipy.stats import wasserstein_distance as wsd
-from scipy.stats import skew, kurtosis
-
-from sklearn.neighbors import KernelDensity
-import torch_geometric
 
 class SubsetSampler(Sampler):
     def __init__(self, indices):
