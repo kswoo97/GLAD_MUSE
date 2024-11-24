@@ -27,6 +27,18 @@ if __name__ == "__main__" :
     parser.add_argument('-dim', '--dim', type=int, default=32)
     parser.add_argument('-n_layers', '--n_layers', type=int, default=3)
     parser.add_argument('-lr', '--lr', type=float, default=0.001)
+    parser.add_argument('-gamma', '--gamma', type=float, default=1.0)
+    
+    """
+    data: Data name.
+    device: GPU device.
+    anom_type: Anomaly class index. 0 indicates class 0 graphs are anomalous and class 1 graph is normal.
+    diff: Training contamination ratio. 0.0 indicates no contamination
+    dim: GNN hidden dimension.
+    n_layers: GNN number of layers.
+    lr: Learning rate of GNN.
+    gamma: Weighting scalar on 1-entry of adjacency matrix.
+    """
     
     args = parser.parse_args()
     
@@ -36,20 +48,25 @@ if __name__ == "__main__" :
     diff = args.diff
     lr = args.lr
     dim = args.dim
-    n_layers = args.n_layers
+    n_layer = args.n_layers
     dp = 0.3
     w_decay = 1e-6
+    gamma = args.gamma
     
     if diff == 0.0 : # This is without training dataset contamination / Otherwise contaminate training set
         diff = "easy" 
     
     dataset, BSize = load_torch_dataset(data, device) # Torch geometric dataset and batch size
     S = create_train_valid_test(dataset, diff, anom_type) # Training/validation/test splits
-    adj, adj_pos_weights, adj_norms = prepare_data(dataset, device) # Prepare adjacency matrices
+    adj, adj_pos_weights = prepare_data(dataset, device, gamma) # Prepare adjacency matrices
     n_feat = dataset[0].x.shape[1]
     
+    total_results = dict()
+                    
+    adj, adj_pos_weights = prepare_data(dataset, device, gamma) # Prepare adjacency matrices
+
     ## Total result tables
-    
+
     ValidAUROC = np.zeros((5, 10)) 
     ValidAP = np.zeros((5, 10))
     ValidTopK = np.zeros((5, 10))
@@ -57,41 +74,40 @@ if __name__ == "__main__" :
     TestAUROC = np.zeros((5, 10))
     TestAP = np.zeros((5, 10))
     TestTopK = np.zeros((5, 10))
-    
+
     for K in range(5) : ## Simulations
-        
+
         torch.manual_seed(K)
         torch.random.manual_seed(K)
         np.random.seed(K)
-        
-        ## There are no training labels
-        
+
+        ## There are no training labels, since we are training an unsupervised anomaly detector.
+
         train_idxs = S[K][0]
         valid_idxs = S[K][1][0]
         valid_labels = S[K][1][1]
         test_idxs = S[K][2][0]
         test_labels = S[K][2][1]
-        
+
         ## Neural networks
-        
-        model = GIN(num_features = n_feat, num_classes = 1, hidden_units=dim, num_layers=n_layers, dropout = dp,
+
+        model = GIN(num_features = n_feat, num_classes = 1, hidden_units=dim, num_layers=n_layer, dropout = dp,
                                  mlp_layers=2, train_eps=False).to(device)
-                        
-        edge_encoder = MLP_Decoder(int(n_layers * dim), dim, dim).to(device)
-        feature_encoder = MLP_Decoder(int(n_layers * dim), dim, n_feat).to(device)
-        
+
+        edge_encoder = MLP_Decoder(int(n_layer * dim), dim, dim).to(device)
+        feature_encoder = MLP_Decoder(int(n_layer * dim), dim, n_feat).to(device)
+
         gnn_trainer = MUSE_representation_learning(datasets = dataset, device = device, labels = adj,
-                                                    labels_pos_weights = adj_pos_weights,
-                                                    labels_norms = adj_norms)
-        
+                                                    labels_pos_weights = adj_pos_weights)
+
         ## Representation Learning of MUSE
         loss, trained_parameters = gnn_trainer.train(model = model, feature_head = feature_encoder, edge_head = edge_encoder, saving_interval = 20,
                                                  train_idxs = train_idxs, lr = lr, weight_decay = w_decay, 
                                                  epochs = 200, batch_size = BSize, 
                                                  return_loss = True, seed = K)
-        
+
         for p_iter in range(len(trained_parameters)) : 
-            
+
             ## One class classification of MUSE
             curP = trained_parameters[p_iter]
             ae_trainer = MUSE_oneclass_classification(model = model, feature_encoder = feature_encoder, 
@@ -126,7 +142,7 @@ if __name__ == "__main__" :
                     p_valid_auroc, p_valid_ap, p_valid_K, p_test_auroc, p_test_ap, p_test_K = ae_trainer.train_MLP(
                                                 encoder_param = curP, classifier = MLP_autoencoder, train_idxs = train_idxs, valid_idxs = valid_idxs, valid_labels = valid_labels, 
                                                   test_idxs = test_idxs, test_labels = test_labels, 
-                                                  lr = r4_lr, epochs = 500, saving_interval = 1, w_decay = 1e-4)
+                                                  lr = r4_lr, epochs = 500, saving_interval = 1, w_decay = 1e-4, seed = K)
 
                     if p_valid_auroc > valid_acc1 : 
                         valid_acc1 = p_valid_auroc
@@ -139,21 +155,22 @@ if __name__ == "__main__" :
                     if p_valid_K > valid_acc3 : 
                         valid_acc3 = p_valid_K
                         test_acc3 = p_test_K
-                    
+
             ValidAUROC[K, p_iter] = valid_acc1
             ValidAP[K, p_iter] = valid_acc2
             ValidTopK[K, p_iter] = valid_acc3
             TestAUROC[K, p_iter] = test_acc1
             TestAP[K, p_iter] = test_acc2
             TestTopK[K, p_iter] = test_acc3
-    
+
     # Pick the best validation epochs
     avg_valid1 = np.argmax(np.mean(ValidAUROC, 0))
     avg_valid2 = np.argmax(np.mean(ValidAP, 0))
     avg_valid3 = np.argmax(np.mean(ValidTopK, 0))
-    
+
     ## Test performance
     print("===============")
+    print("LR: {0} | Hid-Dim: {1} | Layers: {2} | Gamma: {3}".format(lr, dim, n_layer, gamma))
     print("Data: {0}".format(data))
     print("Average of AUROC: {0} | STD of AUROC: {1}".format(np.mean(TestAUROC[:, avg_valid1]), np.std(TestAUROC[:, avg_valid1])))
     print("Average of AP: {0} | STD of AP: {1}".format(np.mean(TestAP[:, avg_valid2]), np.std(TestAP[:, avg_valid2])))

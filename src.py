@@ -54,13 +54,12 @@ class EarlyStopper :
 
 class MUSE_representation_learning() : 
     
-    def __init__(self, datasets, device, labels, labels_pos_weights, labels_norms) : 
+    def __init__(self, datasets, device, labels, labels_pos_weights) : 
         
         self.datasets = datasets
         self.device = device
         self.labels = labels
         self.labels_pos_weights = labels_pos_weights
-        self.labels_norms = labels_norms
         self.cos = torch.nn.CosineSimilarity(dim = 1, eps = 1e-6)
             
     def fit(self, IDXs) : 
@@ -90,7 +89,6 @@ class MUSE_representation_learning() :
             A_tilde = torch.matmul(curZ, curZ.T).flatten()
             
             pos_weight = self.labels_pos_weights[b_id]
-            norm = self.labels_norms[b_id]
             criterion = torch.nn.BCEWithLogitsLoss(pos_weight = pos_weight, reduction = 'mean')
             L1 = 0.5 * criterion(A_tilde, self.labels[b_id])
             L2 = 0.5 * torch.mean(L_X[start_indptr : end_indptr])
@@ -240,7 +238,11 @@ class MUSE_oneclass_classification() :
     
     def train_MLP(self, encoder_param, classifier, train_idxs, valid_idxs, valid_labels, 
                       test_idxs, test_labels, lr = 1e-3, epochs = 200, w_decay = 1e-5, saving_interval = 1, 
-                                    return_parameter = False, early_stop = 10) : 
+                                    return_parameter = False, early_stop = 10, seed = 0) : 
+        
+        torch.manual_seed(seed)
+        torch.random.manual_seed(seed)
+        np.random.seed(seed)
         
         if len(self.TX) == 0 :
             self.obtain_error_representations(encoder_param, train_idxs)
@@ -253,6 +255,7 @@ class MUSE_oneclass_classification() :
         optimizer = torch.optim.Adam(classifier.parameters(), lr = lr, weight_decay = w_decay)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=50, eta_min=0.0)
         self.cos_criterion = torch.nn.CosineSimilarity(dim = 1, eps = 1e-6)
+        torch.manual_seed(0) # Training reproducibility
         
         classifier.train()
         val_auroc = 0
@@ -267,7 +270,6 @@ class MUSE_oneclass_classification() :
             L2_loss.backward()
             optimizer.step()
             scheduler.step()
-
 
             if int(ep + 1) % saving_interval == 0 : 
 
@@ -288,15 +290,6 @@ class MUSE_oneclass_classification() :
         
         
         return val_auroc, val_ap, val_K, test_auroc, test_ap, test_K
-            
-    def evaluate_with_distance(self, idxs, label, classifier) : 
-        
-        with torch.no_grad() : 
-            classifier.eval()
-            curZ = classifier(self.TX[idxs])
-            score = -(torch.sum((curZ - self.C)**2, 1)).detach().to('cpu').numpy()
-            
-        return auroc(label, score)
     
     def evaluate_with_Reconstruction(self, idxs, label, classifier, stds, final = False) : 
         

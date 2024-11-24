@@ -43,7 +43,7 @@ def load_torch_dataset(data, device) :
                 CD.append(ie)
                 
         dataset = dataset[CD]
-        BSize = 256 # Batch size
+        BSize = 128 # Batch size
         
     elif data == "protein" :
         dataset = TUDataset(root='/tmp/ENZYMES', name='PROTEINS', use_node_attr = True)
@@ -86,7 +86,7 @@ def load_torch_dataset(data, device) :
                 
         dataset = TUDataset(root='/tmp/ENZYMES', name='REDDIT-BINARY', use_node_attr = True, 
                    transform = torch_geometric.transforms.OneHotDegree(max_degree = max(total_degree)))
-        BSize = 32
+        BSize = 16
         
     elif data == "imdb" :
         dtype = 'bio'
@@ -183,21 +183,19 @@ def create_train_valid_test(dataset, difficulty = 'easy', anom_type = 0) :
         
     return splits
 
-def prepare_data(dataset, device) : 
+def prepare_data(dataset, device, gamma = 1.0) : 
     
     labels = []
     labels_pos_weights = []
-    labels_norms = []
     
     for d in dataset : 
-        adj = to_dense_adj(d.edge_index)
+        adj = to_dense_adj(d.edge_index)[0]
         idd = list(range(adj.shape[0]))
         adj[idd, idd] = 1.0
+        n_nodes = adj.shape[0]
         adj = adj.flatten().to(device)
-        pos_weight = float(adj.shape[0] * adj.shape[0] - adj.sum()) / adj.sum()
-        norm = adj.shape[0] * adj.shape[0] / float((adj.shape[0] * adj.shape[0] - adj.sum()) * 2)        
+        pos_weight = (float(n_nodes * n_nodes - adj.sum()) / adj.sum()) ** gamma
         labels.append(adj)
         labels_pos_weights.append(pos_weight)
-        labels_norms.append(norm)
         
-    return labels, labels_pos_weights, labels_norms
+    return labels, labels_pos_weights
