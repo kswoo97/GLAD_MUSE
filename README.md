@@ -1,5 +1,7 @@
 # Official code implementation of MUSE.
 
+## Hyperparameter configurations will be updated by 24. 11. 25.
+
 ## Paper information
 - ***Title***: Rethinking Reconstruction-based Graph-Level Anomaly Detection: Limitations and a Simple Remedy
 - ***Venue***: Accepted to **NeurIPS 2024**
